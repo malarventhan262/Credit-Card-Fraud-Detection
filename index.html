@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fraud Detection Dashboard</title>
+
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root {
+  --bg-color: #d9f0ff;      /* Light pastel blue */
+  --card-bg: #f0f2f5;       /* Light grey cards */
+  --text-color: #1f2937;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --success: #10b981;
+  --error: #ef4444;
+  --accent: #fbbf24;
+  --shadow: rgba(0,0,0,0.08);
+  --font-main: 'Nunito', sans-serif;
+}
+
+body {
+  font-family: var(--font-main);
+  background: var(--bg-color);
+  color: var(--text-color);
+  margin:0;
+  padding:0;
+}
+
+header {
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:15px 0;
+  background: var(--card-bg);
+  box-shadow: 0 2px 8px var(--shadow);
+}
+header h1 { color: var(--primary); margin:0; font-weight:700; }
+
+.container {
+  max-width: 1000px;
+  margin: 30px auto;
+  padding: 20px;
+  display:flex;
+  flex-direction:column;
+  gap:30px;
+}
+
+/* Input Section */
+.input-section {
+  background: var(--card-bg);
+  padding: 20px;
+  border-radius:20px;
+  box-shadow: 0 6px 15px var(--shadow);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.input-section h2 { margin-bottom:15px; color: var(--primary); }
+
+.features-row {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:15px;
+  margin-bottom:15px;
+}
+
+.feature-box {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  width:120px;
+}
+
+.feature-box label {
+  margin-bottom:5px;
+  font-size:14px;
+  text-align:center;
+}
+
+.feature-box input {
+  width:100%;
+  padding:8px;
+  border-radius:10px;
+  border:1px solid #ccc;
+  text-align:center;
+  font-size:13px;
+  background: #ffffff;
+}
+
+/* Buttons */
+button {
+  padding:10px 18px;
+  border:none;
+  border-radius:10px;
+  background: var(--primary);
+  color:#fff;
+  cursor:pointer;
+  font-weight:600;
+  margin-top:10px;
+}
+button:hover { background: var(--primary-dark); }
+
+/* Loader & Result */
+.loader { display:none; border:4px solid #f3f3f3; border-top:4px solid var(--primary); border-radius:50%; width:35px; height:35px; animation:spin 1s linear infinite; margin:15px auto; }
+@keyframes spin { 0%{transform:rotate(0deg);}100%{transform:rotate(360deg);} }
+
+.result { padding:10px; border-radius:10px; font-weight:bold; text-align:center; display:none; margin-top:10px; width:100%; max-width:400px; box-shadow:0 4px 8px var(--shadow);}
+.success { background:var(--success); color:#fff; }
+.error { background:var(--error); color:#fff; }
+
+/* Risk Meter */
+.risk-meter { height:16px; width:100%; max-width:400px; background:#ddd; border-radius:10px; margin-top:10px; position:relative; }
+.risk-fill { height:100%; background:var(--primary); width:0%; border-radius:10px; transition: width 0.5s; }
+.risk-text { margin-top:5px; font-weight:500; text-align:center; }
+
+/* Status */
+.status-bar { display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:20px; font-size:14px; }
+.status-dot { width:12px; height:12px; border-radius:50%; background:gray; }
+.online { background: var(--success); }
+.offline { background: var(--error); }
+
+/* History Table */
+.history-section { text-align:center; }
+.history-section table { width:100%; max-width:700px; margin:10px auto; border-collapse:collapse; border-radius:10px; overflow:hidden; box-shadow:0 4px 10px var(--shadow);}
+.history-section th, td { border:1px solid #ddd; padding:8px; text-align:center; font-size:13px; }
+.history-section th { background: var(--primary); color:#fff; }
+
+/* Charts Section */
+.chart-section { display:flex; flex-wrap:wrap; justify-content:center; gap:20px; }
+
+.chart-card {
+  background: var(--card-bg);
+  padding:15px;
+  border-radius:15px;
+  box-shadow:0 4px 10px var(--shadow);
+  flex:1 1 220px;
+  min-width:220px;
+  max-width:280px;
+  text-align:center;
+}
+
+/* Footer */
+footer { text-align:center; padding:15px; background: var(--card-bg); box-shadow:0 -2px 10px var(--shadow); font-size:13px; margin-top:20px; border-radius:0 0 15px 15px; }
+
+@media(max-width:600px){
+  .features-row{flex-direction:column; align-items:center;}
+  .chart-card{max-width:90%;}
+}
+</style>
+</head>
+<body>
+
+<header><h1>Fraud Detection Pro</h1></header>
+
+<div class="container">
+
+  <div class="status-bar">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Checking backend...</span>
+  </div>
+
+  <div class="input-section">
+    <h2>Transaction Features</h2>
+    <div class="features-row">
+      <div class="feature-box"><label>Transaction Amount</label><input type="number" id="feature0" value="100" step="any"></div>
+      <div class="feature-box"><label>Time since last transaction</label><input type="number" id="feature1" value="3600" step="any"></div>
+      <div class="feature-box"><label>Merchant Category Score</label><input type="number" id="feature2" value="0.7" step="any"></div>
+      <div class="feature-box"><label>Customer Risk Score</label><input type="number" id="feature3" value="0.2" step="any"></div>
+      <div class="feature-box"><label>Transaction Location Risk</label><input type="number" id="feature4" value="0.1" step="any"></div>
+    </div>
+    <button onclick="predict()">Check Fraud</button>
+    <div class="loader" id="loader"></div>
+    <div class="result" id="result"></div>
+    <div class="risk-meter"><div class="risk-fill" id="riskFill"></div></div>
+    <div class="risk-text" id="riskText">Risk: N/A</div>
+  </div>
+
+  <div class="history-section">
+    <h2>Prediction History</h2>
+    <button onclick="downloadCSV()">Download CSV</button>
+    <table id="historyTable">
+      <thead><tr><th>#</th><th>Features</th><th>Probability</th><th>Fraud</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <div class="chart-section">
+    <div class="chart-card"><h3>Fraud Probability</h3><canvas id="fraudChart" height="150"></canvas></div>
+    <div class="chart-card"><h3>Risk Over Time</h3><canvas id="riskChart" height="150"></canvas></div>
+    <div class="chart-card"><h3>Fraud Pie</h3><canvas id="fraudPie" height="150"></canvas></div>
+  </div>
+</div>
+
+<footer>&copy; 2025 Fraud Detection System | Linux Compatible | FastAPI + JS</footer>
+
+<script>
+// Backend status
+async function checkBackendStatus() {
+  const dot = document.getElementById("statusDot");
+  const text = document.getElementById("statusText");
+  try {
+    const res = await fetch("/health");
+    if(res.ok){ dot.className="status-dot online"; text.innerText="Backend Online"; }
+    else{ dot.className="status-dot offline"; text.innerText="Backend Unavailable"; }
+  } catch { dot.className="status-dot offline"; text.innerText="Backend Offline"; }
+}
+setInterval(checkBackendStatus,5000);
+checkBackendStatus();
+
+// Prediction & History
+const history=[];
+async function predict(){
+  const f0=parseFloat(document.getElementById("feature0").value);
+  const f1=parseFloat(document.getElementById("feature1").value);
+  const f2=parseFloat(document.getElementById("feature2").value);
+  const f3=parseFloat(document.getElementById("feature3").value);
+  const f4=parseFloat(document.getElementById("feature4").value);
+
+  const resultBox=document.getElementById("result");
+  const loader=document.getElementById("loader");
+  const riskFill=document.getElementById("riskFill");
+  const riskText=document.getElementById("riskText");
+
+  if([f0,f1,f2,f3,f4].some(isNaN)){
+    resultBox.style.display="block";
+    resultBox.className="result error";
+    resultBox.innerText="⚠️ Enter all feature values!";
+    return;
+  }
+
+  loader.style.display="block";
+  resultBox.style.display="none";
+
+  const payload={features:{feature0:f0,feature1:f1,feature2:f2,feature3:f3,feature4:f4}};
+
+  try{
+    const res=await fetch("/predict",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    });
+    loader.style.display="none";
+    if(!res.ok) throw new Error("Server Error");
+    const data=await res.json();
+
+    // Update Result
+    resultBox.style.display="block";
+    resultBox.className="result "+(data.is_fraud?"error":"success");
+    resultBox.innerText=`Prediction: ${data.is_fraud?"Fraud":"Safe"} | Probability: ${data.fraud_probability}`;
+
+    // Update Risk Meter
+    riskFill.style.width=`${data.fraud_probability*100}%`;
+    if(data.fraud_probability<0.3) riskText.innerText="Risk: Low";
+    else if(data.fraud_probability<0.7) riskText.innerText="Risk: Medium";
+    else riskText.innerText="Risk: High";
+
+    // Save to history
+    history.push({features:[f0,f1,f2,f3,f4],prob:data.fraud_probability,fraud:data.is_fraud});
+    updateHistoryTable();
+    updateCharts();
+  }catch(err){
+    loader.style.display="none";
+    resultBox.style.display="block";
+    resultBox.className="result error";
+    resultBox.innerText="❌ Could not connect to backend.";
+    console.error(err);
+  }
+}
+
+function updateHistoryTable(){
+  const tbody=document.querySelector("#historyTable tbody");
+  tbody.innerHTML="";
+  history.forEach((h,i)=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${i+1}</td><td>${h.features.join(", ")}</td><td>${h.prob.toFixed(2)}</td><td>${h.fraud?"Yes":"No"}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function downloadCSV(){
+  if(!history.length) return alert("No history to download!");
+  let csv="No,Feature0,Feature1,Feature2,Feature3,Feature4,Probability,Fraud\n";
+  history.forEach((h,i)=>{csv+=`${i+1},${h.features.join(",")},${h.prob},${h.fraud}\n`;});
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download="fraud_history.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Charts
+let fraudChart=null, riskChart=null, fraudPie=null;
+function updateCharts(){
+  const ctx1=document.getElementById("fraudChart").getContext("2d");
+  const ctx2=document.getElementById("riskChart").getContext("2d");
+  const ctx3=document.getElementById("fraudPie").getContext("2d");
+
+  const labels=history.map((_,i)=>i+1);
+  const probs=history.map(h=>h.prob);
+
+  const fraudCounts=[
+    history.filter(h=>h.fraud).length,
+    history.filter(h=>!h.fraud).length
+  ];
+
+  if(fraudChart) fraudChart.destroy();
+  if(riskChart) riskChart.destroy();
+  if(fraudPie) fraudPie.destroy();
+
+  fraudChart=new Chart(ctx1,{type:'bar',data:{labels:labels,datasets:[{label:'Fraud Probability',data:probs,backgroundColor:'#ef4444'}]},options:{responsive:true,plugins:{legend:{display:false}}}});
+  riskChart=new Chart(ctx2,{type:'line',data:{labels:labels,datasets:[{label:'Fraud Risk',data:probs,fill:true,backgroundColor:'rgba(59,130,246,0.2)',borderColor:'#3b82f6'}]},options:{responsive:true}});
+  fraudPie=new Chart(ctx3,{type:'doughnut',data:{labels:['Fraud','Safe'],datasets:[{data:fraudCounts,backgroundColor:['#ef4444','#10b981']}]},options:{responsive:true}});
+}
+</script>
+
+</body>
+</html>
